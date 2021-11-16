@@ -14,3 +14,7 @@ def get_parameter(parameter_name, with_decryption):
         logging.error(e)
         return None
     return result["Parameter"]["Value"]
+
+
+if __name__ == "__main__":
+    print(get_parameter("", True))

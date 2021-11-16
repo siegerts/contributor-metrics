@@ -3,8 +3,7 @@ from datetime import date, timedelta
 
 import requests
 
-from models import Member, PullRequest
-from org_members import get_org_members
+from chalicelib.models import Member, PullRequest
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
@@ -88,10 +87,10 @@ class GitHubAPI:
     def check_rate(self, resource):
         req = self.get("/rate_limit")
 
-        rl = req["resources"][resource]
+        rate = req["resources"][resource]
 
-        remaining = rl["remaining"]
-        reset = rl["reset"]
+        remaining = rate["remaining"]
+        reset = rate["reset"]
 
         if remaining < 1:
             t = (reset - time.time()) + 3
@@ -113,7 +112,6 @@ def backfill_queries():
 
 def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
     q = query
-
     if since_date:
         q += f"created:>={since_date}"
 
@@ -124,7 +122,6 @@ def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
     }
 
     gh.check_rate("search")
-
     prs = gh.get("/search/issues", **params)
 
     tc = prs["total_count"]
@@ -132,12 +129,10 @@ def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
     out = prs["items"]
 
     print(f"{q} total count is : {tc}")
-
     gh.check_rate("search")
 
     while count < tc:
         params["page"] = params["page"] + 1
-
         prs = gh.get("/search/issues", **params)
         recs = prs["items"]
 
@@ -145,7 +140,6 @@ def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
             count = count + len(recs)
             out = out + recs
             print(count, "/", tc)
-
             gh.check_rate("search")
 
         else:
@@ -156,6 +150,38 @@ def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
         repo = rec["repository_url"].split("/")
         rec["repo"] = repo[-1]
         rec["org"] = repo[-2]
+
+    return out
+
+
+def get_org_members(gh):
+
+    params = {
+        "per_page": 100,
+        "page": 1,
+    }
+
+    gh.check_rate("core")
+    mem = gh.get("/orgs/aws-amplify/members", **params)
+
+    count = len(mem)
+    out = mem
+
+    if count < params["per_page"]:
+        return out
+
+    gh.check_rate("core")
+
+    while count > 0:
+        params["page"] = params["page"] + 1
+        mem = gh.get("/orgs/aws-amplify/members", **params)
+        count = len(mem)
+        if count:
+            out = out + mem
+            gh.check_rate("core")
+
+        else:
+            break
 
     return out
 
@@ -256,7 +282,11 @@ def update_org_members_daily(db, gh):
 
 
 # run this daily
-def reconcile_unmerged_closed_prs(db, gh, since_dt):
+def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
+    if not since_dt:
+        today = date.today()
+        since_dt = today - timedelta(weeks=52)
+
     for repo in repos:
         q = f"repo:aws-amplify/{repo} is:pr is:closed is:unmerged closed:>={since_dt}"
         prs = get_prs(gh, query=q)

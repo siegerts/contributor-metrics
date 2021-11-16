@@ -1,0 +1,32 @@
+{
+  "resources": [
+    {
+      "name": "default-role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::706111362025:role/contributor-metrics-dev",
+      "role_name": "contributor-metrics-dev"
+    },
+    {
+      "name": "every_30_min",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:706111362025:function:contributor-metrics-dev-every_30_min"
+    },
+    {
+      "name": "every_30_min-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "contributor-metrics-dev-every_30_min-event"
+    },
+    {
+      "name": "daily",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-east-1:706111362025:function:contributor-metrics-dev-daily"
+    },
+    {
+      "name": "daily-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "contributor-metrics-dev-daily-event"
+    }
+  ],
+  "schema_version": "2.0",
+  "backend": "api"
+}
