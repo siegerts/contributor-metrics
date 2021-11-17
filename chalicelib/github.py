@@ -1,14 +1,18 @@
+import logging
 import time
 from datetime import date, datetime, timedelta
 
 import requests
 
 try:
-    from chalicelib.models import Member, PullRequest, Issue
+    from chalicelib.models import Issue, Member, PullRequest
 except ModuleNotFoundError:
-    from models import Member, PullRequest, Issue
+    from models import Issue, Member, PullRequest
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
+
+
+# Check reaction count
 
 REPOS = [
     "amplify-cli",
@@ -81,6 +85,19 @@ class GitHubAPI:
         self._token = token
 
     def get(self, url, media_type="vnd.github.v3+json", **params):
+        """Wrapper GET method around the GitHub REST API
+
+        Args:
+            url (str): GitHub REST API endpoint
+            media_type (str, optional): Defaults to "vnd.github.v3+json".
+
+        Raises:
+            GitHubAPIException: [description]
+
+        Returns:
+            dict: REST API response object
+        """
+
         headers = {
             "Accept": "application/" + media_type,
             "Authorization": "token " + self.token,
@@ -90,31 +107,42 @@ class GitHubAPI:
             headers["Accept"] = "application/" + media_type
 
         req_url = self.gh_api + url
-
         req = requests.get(req_url, headers=headers, params=params)
 
         if req.status_code not in range(200, 301):
+            logging.error(req_url, req.json())
             raise GitHubAPIException(req.status_code, req.json())
 
         return req.json()
 
     def check_rate(self, resource):
+        """Helper that checks the rate limit for a given resource and pauses
+        if amount is depleted for instance token.
+
+        Args:
+            resource (str): The type of resource that the rate limit is validated
+            against. https://docs.github.com/en/rest/reference/rate-limit
+        """
         req = self.get("/rate_limit")
 
         rate = req["resources"][resource]
-
         remaining = rate["remaining"]
         reset = rate["reset"]
 
-        if remaining < 1:
-            t = (reset - time.time()) + 3
-            print(f"...waiting for {t} seconds.")
-            time.sleep(t)
-            print("...resuming.")
+        if not remaining:
+            pause = (reset - time.time()) + 3
+            logging.info(f"...waiting for {pause} seconds.")
+            time.sleep(pause)
+            logging.info("...resuming.")
             return
 
 
 def backfill_pr_queries():
+    """Generate historical GitHub queries for PRs
+
+    Returns:
+        list: list of queries
+    """
     queries = []
     for repo in REPOS:
         for period in PERIODS:
@@ -125,6 +153,11 @@ def backfill_pr_queries():
 
 
 def backfill_issue_queries():
+    """Generate historical GitHub queries for issues
+
+    Returns:
+        list: list of queries
+    """
     queries = []
     for repo in REPOS:
         for period in ISSUE_PERIODS:
@@ -135,6 +168,15 @@ def backfill_issue_queries():
 
 
 def get_issues(gh, query):
+    """Search and format issues from GitHub API.
+
+    Args:
+        gh (GitHubAPI): instance of API helper with token
+        query (str): search query to pass to the REST search enpoint
+
+    Returns:
+        list: list of items matching the input query
+    """
     params = {
         "q": query,
         "per_page": 100,
@@ -148,7 +190,7 @@ def get_issues(gh, query):
     count = len(res["items"])
     issues = res["items"]
 
-    print(f"{query} total count is : {tc}")
+    logging.info(f"{query} total count is : {tc}")
     gh.check_rate("search")
 
     while count < tc:
@@ -159,7 +201,7 @@ def get_issues(gh, query):
         if recs:
             count = count + len(recs)
             issues = issues + recs
-            print(count, "/", tc)
+            logging.info(count, "/", tc)
             gh.check_rate("search")
 
         else:
@@ -175,6 +217,14 @@ def get_issues(gh, query):
 
 
 def get_org_members(gh):
+    """Get GitHub organization members.
+
+    Args:
+        gh (GitHubAPI): instance of API helper with token
+
+    Returns:
+        list[dict]: member list
+    """
     params = {
         "per_page": 100,
         "page": 1,
@@ -225,6 +275,16 @@ def backfill_org_issues(gh):
 
 # run this daily
 def update_org_issues_daily(db, gh, db_model, prs=True):
+    """Retrieve items created on or before today-5 days
+    and store new records in db
+
+    Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        gh (GitHubAPI): instance of API helper with token
+        db_model (sqlalchemy model): DB table model that corresponds with datatype
+        prs (bool, optional): Flag to indicate whether to search
+        PRs or issues. Defaults to True (i.e. search PRs).
+    """
     # TODO: abstract this
     today = date.today()
     since_dt = today - timedelta(days=5)
@@ -251,17 +311,28 @@ def update_org_issues_daily(db, gh, db_model, prs=True):
                 new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                print(f"new rec added. {issue['id']}")
+                logging.info(f"new rec added. {issue['id']}")
 
         db.close()
 
 
 def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
+    """Retrieve items closed on or before today-1 week
+    updates existing DB record or inserts a new record.
+
+    Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        gh (GitHubAPI): instance of API helper with token
+        db_model (sqlalchemy model): DB table model that corresponds with datatype
+        prs (bool, optional): Flag to indicate whether to search
+        PRs or issues. Defaults to True (i.e. search PRs).
+        week_interval (int, optional): Number of historical weeks to search. Defaults to 1.
+    """
     today = date.today()
     since_dt = today - timedelta(weeks=week_interval)
 
     for repo in REPOS:
-        print(f"updating {repo}...")
+        logging.info(f"updating {repo}...")
         q = f"repo:aws-amplify/{repo} closed:>={since_dt}"
         if prs:
             q += " is:pr "
@@ -289,17 +360,26 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
                         dict(**issue)
                     )
                     db.commit()
-                    print(f"updated rec. {issue_id}")
+                    logging.info(f"updated rec. {issue_id}")
             else:
                 new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                print(f"new rec added. {issue['id']}")
+                logging.info(f"new rec added. {issue['id']}")
     db.close()
 
 
 # run this daily
 def update_org_members_daily(db, gh):
+    """Update GitHub organization members in the database. Insert new
+    records for new members and set existing members to inactive if no longer
+    in the organization.
+
+    Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        gh (GitHubAPI): instance of API helper with token
+
+    """
     mems = get_org_members(gh)
     mems_ids = [mem["id"] for mem in mems]
 
@@ -318,7 +398,7 @@ def update_org_members_daily(db, gh):
             # add to existing for inactive
             # record check below
             existing_rec_ids.append(mem_id)
-            print(f"new mem added. {mem_id}")
+            logging.info(f"new member added. {mem_id}")
 
     # inactive
     for rec_id in existing_rec_ids:
@@ -329,11 +409,21 @@ def update_org_members_daily(db, gh):
             db.commit()
 
     db.close()
-    print("members updated.")
+    logging.info("members updated.")
 
 
 # run this daily
 def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
+    """Retrieve and update all PRs that have been `closed`
+    and **not** `merged` in the database. PRs have a `state` attrbute
+    that only shows `open`/`closed`. For external contributors, we
+    want to know if the PR was `closed` and `merged`.
+
+    Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        gh (GitHubAPI): instance of API helper with token
+        since_dt (str, optional): [description]. Defaults to None.
+    """
     if not since_dt:
         today = date.today()
         since_dt = today - timedelta(weeks=52)
@@ -361,9 +451,7 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
 
 if __name__ == "__main__":
     import os
-
     from dotenv import load_dotenv
-
     from models import Member, PullRequest, create_all, create_db_session
 
     load_dotenv()
