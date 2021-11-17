@@ -23,7 +23,7 @@ db = None
 
 
 if "AWS_CHALICE_CLI_MODE" not in os.environ:
-    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO)
     # We're running in Lambda...yay
     token = get_parameter("/contributor-metrics/prod/token", True)
     db_url = get_parameter("/contributor-metrics/prod/db_url", True)
