@@ -117,7 +117,7 @@ class GitHubAPI:
 
     def check_rate(self, resource):
         """Helper that checks the rate limit for a given resource and pauses
-        if amount is depleted for instance token.
+           if amount is depleted for instance token.
 
         Args:
             resource (str): The type of resource that the rate limit is validated
@@ -276,7 +276,7 @@ def backfill_org_issues(gh):
 # run this daily
 def update_org_issues_daily(db, gh, db_model, prs=True):
     """Retrieve items created on or before today-5 days
-    and store new records in db
+       and store new records in db
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
@@ -318,7 +318,7 @@ def update_org_issues_daily(db, gh, db_model, prs=True):
 
 def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
     """Retrieve items closed on or before today-1 week
-    updates existing DB record or inserts a new record.
+       updates existing DB record or inserts a new record.
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
@@ -372,8 +372,8 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
 # run this daily
 def update_org_members_daily(db, gh):
     """Update GitHub organization members in the database. Insert new
-    records for new members and set existing members to inactive if no longer
-    in the organization.
+       records for new members and set existing members to inactive if no longer
+       in the organization.
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
@@ -415,9 +415,9 @@ def update_org_members_daily(db, gh):
 # run this daily
 def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
     """Retrieve and update all PRs that have been `closed`
-    and **not** `merged` in the database. PRs have a `state` attrbute
-    that only shows `open`/`closed`. For external contributors, we
-    want to know if the PR was `closed` and `merged`.
+       and **not** `merged` in the database. PRs have a `state` attrbute
+       that only shows `open`/`closed`. For external contributors, we
+       want to know if the PR was `closed` and `merged`.
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
