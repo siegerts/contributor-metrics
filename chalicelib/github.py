@@ -447,6 +447,7 @@ if __name__ == "__main__":
     from models import Member, PullRequest, Issue, create_all, create_db_session
 
     load_dotenv()
+    logging.getLogger().setLevel(logging.DEBUG)
 
     token = os.getenv("GH_TOKEN")
     db_url = os.getenv("DB_URL")
