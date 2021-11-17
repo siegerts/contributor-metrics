@@ -11,7 +11,6 @@ except ModuleNotFoundError:
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
-
 # Check reaction count
 
 REPOS = [
@@ -26,7 +25,6 @@ REPOS = [
     "amplify-android",
     "docs",
 ]
-
 
 PERIODS = [
     ("2019-01-01", "2019-03-31"),  # q1
@@ -203,7 +201,6 @@ def get_issues(gh, query):
             issues = issues + recs
             logging.info(count, "/", tc)
             gh.check_rate("search")
-
         else:
             break
 
@@ -273,7 +270,6 @@ def backfill_org_issues(gh):
     db.close()
 
 
-# run this daily
 def update_org_issues_daily(db, gh, db_model, prs=True):
     """Retrieve items created on or before today-5 days
        and store new records in db
@@ -312,7 +308,6 @@ def update_org_issues_daily(db, gh, db_model, prs=True):
                 db.add(new_rec)
                 db.commit()
                 logging.info(f"new rec added. {issue['id']}")
-
         db.close()
 
 
@@ -369,7 +364,6 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
     db.close()
 
 
-# run this daily
 def update_org_members_daily(db, gh):
     """Update GitHub organization members in the database. Insert new
        records for new members and set existing members to inactive if no longer
@@ -440,19 +434,17 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
             .filter(PullRequest.id.in_(pr_ids), PullRequest.merged == True)
             .all()
         )
-
         # update existing
         for rec in existing_recs:
             rec.merged = False
             db.commit()
-
     db.close()
 
 
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
-    from models import Member, PullRequest, create_all, create_db_session
+    from models import Member, PullRequest, Issue, create_all, create_db_session
 
     load_dotenv()
 
@@ -460,12 +452,9 @@ if __name__ == "__main__":
     db_url = os.getenv("DB_URL")
 
     # ---
-
     gh = GitHubAPI(token=token)
     db = create_db_session(db_url)
-
     # ---
-
     # create_all(db_url)
     # backfill_org_prs(gh)
     # backfill_org_issues(gh)
@@ -479,5 +468,4 @@ if __name__ == "__main__":
     update_org_issues_closed_daily(db, gh, Issue, prs=False)
 
     update_org_members_daily(db, gh)
-
     # reconcile_unmerged_closed_prs(db, gh, "2019-01-01")

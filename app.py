@@ -14,7 +14,6 @@ from chalicelib.models import create_db_session, PullRequest, Issue
 
 app = Chalice(app_name="contributor-metrics")
 
-
 token = None
 db_url = None
 
