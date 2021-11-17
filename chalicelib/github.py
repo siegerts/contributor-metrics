@@ -1,14 +1,16 @@
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import requests
 
-from chalicelib.models import Member, PullRequest
+try:
+    from chalicelib.models import Member, PullRequest, Issue
+except ModuleNotFoundError:
+    from models import Member, PullRequest, Issue
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
-
-repos = [
+REPOS = [
     "amplify-cli",
     "amplify-js",
     "amplify-ui",
@@ -22,7 +24,7 @@ repos = [
 ]
 
 
-periods = [
+PERIODS = [
     ("2019-01-01", "2019-03-31"),  # q1
     ("2019-04-01", "2019-06-30"),  # q2
     ("2019-07-01", "2019-09-30"),  # q3
@@ -38,6 +40,18 @@ periods = [
     ("2021-07-01", "2021-09-30"),
     ("2021-10-01", "2021-12-31"),
 ]
+
+ISSUE_PERIODS = [
+    ("2017-01-01", "2017-03-31"),  # q1
+    ("2017-04-01", "2017-06-30"),  # q2
+    ("2017-07-01", "2017-09-30"),  # q3
+    ("2017-10-01", "2017-12-31"),  # q4
+    #
+    ("2018-01-01", "2018-03-31"),
+    ("2018-04-01", "2018-06-30"),
+    ("2018-07-01", "2018-09-30"),
+    ("2018-10-01", "2018-12-31"),
+] + PERIODS
 
 
 class GitHubAPIException(Exception):
@@ -100,62 +114,67 @@ class GitHubAPI:
             return
 
 
-def backfill_queries():
+def backfill_pr_queries():
     queries = []
-    for repo in repos:
-        for period in periods:
+    for repo in REPOS:
+        for period in PERIODS:
             queries += [
                 f"repo:aws-amplify/{repo} is:pr created:{period[0]}..{period[1]}"
             ]
     return queries
 
 
-def get_prs(gh, query="org:aws-amplify is:pr ", since_date=None):
-    q = query
-    if since_date:
-        q += f"created:>={since_date}"
+def backfill_issue_queries():
+    queries = []
+    for repo in REPOS:
+        for period in ISSUE_PERIODS:
+            queries += [
+                f"repo:aws-amplify/{repo} is:issue created:{period[0]}..{period[1]}"
+            ]
+    return queries
 
+
+def get_issues(gh, query):
     params = {
-        "q": q,
+        "q": query,
         "per_page": 100,
         "page": 1,
     }
 
     gh.check_rate("search")
-    prs = gh.get("/search/issues", **params)
+    res = gh.get("/search/issues", **params)
 
-    tc = prs["total_count"]
-    count = len(prs["items"])
-    out = prs["items"]
+    tc = res["total_count"]
+    count = len(res["items"])
+    issues = res["items"]
 
-    print(f"{q} total count is : {tc}")
+    print(f"{query} total count is : {tc}")
     gh.check_rate("search")
 
     while count < tc:
         params["page"] = params["page"] + 1
-        prs = gh.get("/search/issues", **params)
-        recs = prs["items"]
+        res = gh.get("/search/issues", **params)
+        recs = res["items"]
 
         if recs:
             count = count + len(recs)
-            out = out + recs
+            issues = issues + recs
             print(count, "/", tc)
             gh.check_rate("search")
 
         else:
             break
 
-    for rec in out:
-        rec["username"] = rec["user"]["login"]
+    for rec in issues:
         repo = rec["repository_url"].split("/")
-        rec["repo"] = repo[-1]
-        rec["org"] = repo[-2]
+        rec["username"] = rec.get("username", rec["user"]["login"])
+        rec["repo"] = rec.get("repo", repo[-1])
+        rec["org"] = rec.get("org", repo[-2])
 
-    return out
+    return issues
 
 
 def get_org_members(gh):
-
     params = {
         "per_page": 100,
         "page": 1,
@@ -165,10 +184,9 @@ def get_org_members(gh):
     mem = gh.get("/orgs/aws-amplify/members", **params)
 
     count = len(mem)
-    out = mem
-
+    org_members = mem
     if count < params["per_page"]:
-        return out
+        return org_members
 
     gh.check_rate("core")
 
@@ -177,87 +195,106 @@ def get_org_members(gh):
         mem = gh.get("/orgs/aws-amplify/members", **params)
         count = len(mem)
         if count:
-            out = out + mem
+            org_members = org_members + mem
             gh.check_rate("core")
-
         else:
             break
 
-    return out
+    return org_members
 
 
 def backfill_org_prs(db, gh):
-    queries = backfill_queries()
+    queries = backfill_pr_queries()
     for q in queries:
-        prs = get_prs(gh, query=q)
+        prs = get_issues(gh, query=q)
         recs = [PullRequest(**rec) for rec in prs]
         db.add_all(recs)
         db.commit()
-        db.close()
+    db.close()
+
+
+def backfill_org_issues(gh):
+    queries = backfill_issue_queries()
+    for q in queries:
+        issues = get_issues(gh, query=q)
+        recs = [Issue(**rec) for rec in issues]
+        db.add_all(recs)
+        db.commit()
+    db.close()
 
 
 # run this daily
-def update_org_prs_daily(db, gh):
+def update_org_issues_daily(db, gh, db_model, prs=True):
+    # TODO: abstract this
     today = date.today()
     since_dt = today - timedelta(days=5)
-    for repo in repos:
-        q = f"repo:aws-amplify/{repo} is:pr created:>={since_dt}"
-        prs = get_prs(gh, query=q)
-        pr_ids = [pr["id"] for pr in prs]
+
+    for repo in REPOS:
+        q = f"repo:aws-amplify/{repo} created:>={since_dt}"
+
+        if prs:
+            q += " is:pr "
+        else:
+            q += " is:issue "
+
+        issues = get_issues(gh, query=q)
+        issue_ids = [issue["id"] for issue in issues]
 
         # find existing
-        existing_recs = db.query(PullRequest).filter(PullRequest.id.in_(pr_ids)).all()
+        existing_recs = db.query(db_model).filter(db_model.id.in_(issue_ids)).all()
         existing_rec_ids = [rec.id for rec in existing_recs]
 
         # add new recs
-        for pr in prs:
-            pr_id = pr["id"]
-            if pr_id not in existing_rec_ids:
-                new_rec = PullRequest(**pr)
+        for issue in issues:
+            issue_id = issue["id"]
+            if issue_id not in existing_rec_ids:
+                new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                print(f"new rec added. {pr['id']}")
+                print(f"new rec added. {issue['id']}")
 
         db.close()
 
 
-# run this daily
-def update_org_prs_closed_daily(db, gh, week_interval=1):
+def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
     today = date.today()
     since_dt = today - timedelta(weeks=week_interval)
-    for repo in repos:
-        print(f"updating {repo} prs...")
-        q = f"repo:aws-amplify/{repo} is:pr closed:>={since_dt}"
-        prs = get_prs(gh, query=q)
 
-        pr_ids = [pr["id"] for pr in prs]
+    for repo in REPOS:
+        print(f"updating {repo}...")
+        q = f"repo:aws-amplify/{repo} closed:>={since_dt}"
+        if prs:
+            q += " is:pr "
+        else:
+            q += " is:issue "
+
+        issues = get_issues(gh, query=q)
+        issue_ids = [issue["id"] for issue in issues]
 
         # find existing
-        existing_recs = db.query(PullRequest).filter(PullRequest.id.in_(pr_ids)).all()
-
+        existing_recs = db.query(db_model).filter(db_model.id.in_(issue_ids)).all()
         existing_rec_ids = {rec.id: rec for rec in existing_recs}
 
-        for pr in prs:
-            pr_id = pr["id"]
-            if pr_id in existing_rec_ids.keys():
+        for issue in issues:
+            issue_id = issue["id"]
+            if issue_id in existing_rec_ids.keys():
                 # check last updated date diffs between db and remote
                 if (
-                    pr["updated_at"]
-                    != existing_rec_ids[pr_id].updated_at.isoformat() + "Z"
+                    issue["updated_at"]
+                    != existing_rec_ids[issue_id].updated_at.isoformat() + "Z"
                 ):
-
                     # update
-                    del pr["id"]
-                    db.query(PullRequest).filter(PullRequest.id == pr_id).update(
-                        dict(**pr)
+                    del issue["id"]
+                    db.query(db_model).filter(db_model.id == issue_id).update(
+                        dict(**issue)
                     )
                     db.commit()
-                    print(f"updated rec. {pr_id}")
+                    print(f"updated rec. {issue_id}")
             else:
-                new_rec = PullRequest(**pr)
+                new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                print(f"new rec added. {pr['id']}")
+                print(f"new rec added. {issue['id']}")
     db.close()
 
 
@@ -270,13 +307,27 @@ def update_org_members_daily(db, gh):
     existing_recs = db.query(Member).filter(Member.id.in_(mems_ids)).all()
     existing_rec_ids = [rec.id for rec in existing_recs]
 
+    # new
     for mem in mems:
         mem_id = mem["id"]
         if mem_id not in existing_rec_ids:
             new_rec = Member(**mem)
             db.add(new_rec)
             db.commit()
+
+            # add to existing for inactive
+            # record check below
+            existing_rec_ids.append(mem_id)
             print(f"new mem added. {mem_id}")
+
+    # inactive
+    for rec_id in existing_rec_ids:
+        if rec_id not in mems_ids:
+            db.query(Member).filter(Member.id == rec_id).update(
+                dict(inactive_dt=datetime.now(), inactive=True)
+            )
+            db.commit()
+
     db.close()
     print("members updated.")
 
@@ -287,11 +338,9 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
         today = date.today()
         since_dt = today - timedelta(weeks=52)
 
-    for repo in repos:
+    for repo in REPOS:
         q = f"repo:aws-amplify/{repo} is:pr is:closed is:unmerged closed:>={since_dt}"
-        prs = get_prs(gh, query=q)
-        print("REPO: ", repo, " COUNT: ", len(prs))
-
+        prs = get_issues(gh, query=q)
         pr_ids = [pr["id"] for pr in prs]
 
         # find prs that already exist in db that need
@@ -312,8 +361,10 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
 
 if __name__ == "__main__":
     import os
-    from models import create_all, create_db_session
+
     from dotenv import load_dotenv
+
+    from models import Member, PullRequest, create_all, create_db_session
 
     load_dotenv()
 
@@ -329,8 +380,16 @@ if __name__ == "__main__":
 
     # create_all(db_url)
     # backfill_org_prs(gh)
+    # backfill_org_issues(gh)
 
-    update_org_prs_daily(db, gh)
-    update_org_prs_closed_daily(db, gh)
-    reconcile_unmerged_closed_prs(db, gh, "2019-01-01")
+    # prs
+    update_org_issues_daily(db, gh, PullRequest, prs=True)
+    update_org_issues_closed_daily(db, gh, PullRequest, prs=True)
+
+    # issues
+    update_org_issues_daily(db, gh, Issue, prs=False)
+    update_org_issues_closed_daily(db, gh, Issue, prs=False)
+
     update_org_members_daily(db, gh)
+
+    # reconcile_unmerged_closed_prs(db, gh, "2019-01-01")

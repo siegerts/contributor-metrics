@@ -1,10 +1,10 @@
 {
   "resources": [
     {
-      "name": "default-role",
+      "name": "every_30_min_role",
       "resource_type": "iam_role",
-      "role_arn": "arn:aws:iam::706111362025:role/contributor-metrics-dev",
-      "role_name": "contributor-metrics-dev"
+      "role_arn": "arn:aws:iam::706111362025:role/contributor-metrics-dev-every_30_min",
+      "role_name": "contributor-metrics-dev-every_30_min"
     },
     {
       "name": "every_30_min",
@@ -15,6 +15,12 @@
       "name": "every_30_min-event",
       "resource_type": "cloudwatch_event",
       "rule_name": "contributor-metrics-dev-every_30_min-event"
+    },
+    {
+      "name": "daily_role",
+      "resource_type": "iam_role",
+      "role_arn": "arn:aws:iam::706111362025:role/contributor-metrics-dev-daily",
+      "role_name": "contributor-metrics-dev-daily"
     },
     {
       "name": "daily",

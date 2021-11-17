@@ -6,11 +6,11 @@ from chalicelib.github import (
     GitHubAPI,
     reconcile_unmerged_closed_prs,
     update_org_members_daily,
-    update_org_prs_closed_daily,
-    update_org_prs_daily,
+    update_org_issues_daily,
+    update_org_issues_closed_daily,
 )
 from chalicelib.utils import get_parameter
-from chalicelib.models import create_db_session
+from chalicelib.models import create_db_session, PullRequest, Issue
 
 app = Chalice(app_name="contributor-metrics")
 
@@ -41,12 +41,13 @@ def every_30_min(event):
     # 5 days back
     # record any new PRs created within
     # the last few days
-    update_org_prs_daily(db, gh)
+    # can narrow this intervat in the future
+    update_org_issues_daily(db, gh, PullRequest, prs=True)
 
     # one week back
     # update existing PR status
     # get recently closed PRs and update in the DB
-    update_org_prs_closed_daily(db, gh)
+    update_org_issues_closed_daily(db, gh, PullRequest, prs=True)
 
     # one year back
     # updates the status of a closed PR to reflect
@@ -56,6 +57,13 @@ def every_30_min(event):
     # update any team members
     # store any new team members
     update_org_members_daily(db, gh)
+
+    # ---
+    # issues
+    update_org_issues_daily(db, gh, Issue, prs=False)
+    update_org_issues_closed_daily(db, gh, Issue, prs=False)
+
+    # recently updated issues?
 
 
 # Run at 5:00am (UTC)/~midnight EST every day.

@@ -28,20 +28,25 @@ chalice deploy
 
 ## permissions to access ssm
 
+policy
+
 deployment
+
+```
+chalice deploy
+```
+
 lambda config
 set min/max dates
 org
-lock down db
+
+## db setup
+
 or local config
 
 ---
 
 reporting ui
-
-maybe add issues?
-
-run every 30min?
 
 ```
 pyenv virtualenv 3.8.3 contributor-metrics
