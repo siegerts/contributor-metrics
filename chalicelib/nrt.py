@@ -58,10 +58,10 @@ def update_issue_activity(db, gh, since_dt=None):
         issue_ids = [issue["id"] for issue in issues]
 
         # find existing issue timeline/page etags
-        # just save the url
         existing_recs = db.query(EventPoll).filter(EventPoll.id.in_(issue_ids)).all()
-
         existing_rec_ids = {f"{rec.id}-{rec.page_no}": rec for rec in existing_recs}
+
+        # create hashid of issue + page
         # {
         #     12323242-1: <rec>,
         #     12323242-2: <rec>,
@@ -74,30 +74,33 @@ def update_issue_activity(db, gh, since_dt=None):
             next = True
             params = {"page": 0, "per_page": 100}
             events = []
+
             while next:
                 params["page"] += 1
                 page_no = params["page"]
 
-                # skip if the issue updated_at is the same as the updated_at
-                # that corresponds to the issue last poll etag
                 etag_id = f"{issue_id}-{page_no}"
-                if existing_rec_ids.get(etag_id, None):
-                    if (
-                        issue_updated_at
-                        == existing_rec_ids[etag_id].issue_updated_at.isoformat() + "Z"
-                    ):
-                        continue
-
-                # check for timeline etag cache
                 cached_etag = None
-                try:
-                    cached_etag = existing_rec_ids[etag_id].etag
-                    print("cache hit")
-                except KeyError:
-                    pass
+
+                if existing_rec_ids.get(etag_id, None):
+                    try:
+                        cached_etag = existing_rec_ids[etag_id].etag
+                        print("cache hit")
+                    except KeyError:
+                        pass
+
+                    # if (
+                    #     issue_updated_at
+                    #     == existing_rec_ids[etag_id].issue_updated_at.isoformat() + "Z"
+                    # ):
+                    #     continue
+
+                    # check for timeline etag cache
 
                 gh.check_rate("core")
                 req = gh.get_timeline(issue["timeline_url"], etag=cached_etag, **params)
+
+                # print(issue_id, issue["timeline_url"], page_no, cached_etag, sep=" ")
 
                 if not req:
                     print("no res")
@@ -106,6 +109,8 @@ def update_issue_activity(db, gh, since_dt=None):
 
                 events += req.json()
                 next = len(req.json()) == params["per_page"]
+
+                print("evts: ", len(req.json()))
 
                 etag = req.headers["ETag"]
                 if etag:
@@ -128,7 +133,6 @@ def update_issue_activity(db, gh, since_dt=None):
 
             if not events:
                 print("no events.")
-
             else:
                 # evt ids from api
                 evt_ids = [
@@ -204,7 +208,7 @@ if __name__ == "__main__":
 
     today = date.today()
     # backfill
-    since_dt = today - timedelta(weeks=8)
+    # since_dt = today - timedelta(weeks=8)
 
-    # since_dt = today - timedelta(days=1)
+    since_dt = today - timedelta(days=1)
     update_issue_activity(db, gh, since_dt)
