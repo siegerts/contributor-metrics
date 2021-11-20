@@ -1,5 +1,14 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Float, create_engine
-from sqlalchemy.dialects.postgresql import ARRAY, JSON
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    create_engine,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
@@ -34,9 +43,9 @@ class Member(Base):
 
 class Issue(Base):
     __tablename__ = "issues"
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     active_lock_reason = Column(String)
-    assignee = Column(JSON)
+    assignee = Column(JSONB)
     assignees = Column(ARRAY(JSON))
     author_association = Column(String)
     body = Column(String)
@@ -49,12 +58,12 @@ class Issue(Base):
     labels = Column(ARRAY(JSON))
     labels_url = Column(String)
     locked = Column(Boolean)
-    milestone = Column(JSON)
+    milestone = Column(JSONB)
     node_id = Column(String)
     number = Column(Integer)
     org = Column(String)
     performed_via_github_app = Column(String)
-    reactions = Column(JSON)
+    reactions = Column(JSONB)
     repo = Column(String)
     repository_url = Column(String)
     score = Column(Float)
@@ -63,13 +72,13 @@ class Issue(Base):
     title = Column(String)
     updated_at = Column(DateTime)
     url = Column(String)
-    user = Column(JSON)
+    user = Column(JSONB)
     username = Column(String)
 
 
 class PullRequest(Base):
     __tablename__ = "pull_requests"
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     url = Column(String)
     repo = Column(String)
     org = Column(String)
@@ -81,15 +90,15 @@ class PullRequest(Base):
     node_id = Column(String)
     number = Column(Integer)
     title = Column(String)
-    user = Column(JSON)
+    user = Column(JSONB)
     username = Column(String)
     labels = Column(ARRAY(JSON))
     state = Column(String)
     merged = Column(Boolean, default=True)
     locked = Column(Boolean)
-    assignee = Column(JSON)
+    assignee = Column(JSONB)
     assignees = Column(ARRAY(JSON))
-    milestone = Column(JSON)
+    milestone = Column(JSONB)
     comments = Column(Integer)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
@@ -97,12 +106,36 @@ class PullRequest(Base):
     author_association = Column(String)
     active_lock_reason = Column(String)
     draft = Column(Boolean)
-    pull_request = Column(JSON)
+    pull_request = Column(JSONB)
     body = Column(String)
-    reactions = Column(JSON)
+    reactions = Column(JSONB)
     timeline_url = Column(String)
     performed_via_github_app = Column(String)
     score = Column(Integer)
+
+
+class Event(Base):
+    __tablename__ = "events"
+    id = Column(BigInteger, primary_key=True)
+    issue_id = Column(BigInteger, primary_key=True)
+    org = Column(String)
+    repo = Column(String)
+    event = Column(String)
+    body = Column(String)
+    label = Column(JSONB)
+    reactions = Column(JSONB)
+    created_at = Column(DateTime)
+    node_id = Column(String)
+    user = Column(JSONB)
+    username = Column(String)
+
+
+class EventPoll(Base):
+    __tablename__ = "event_polls"
+    id = Column(BigInteger, primary_key=True)
+    page_no = Column(Integer, primary_key=True)
+    issue_updated_at = Column(DateTime)
+    etag = Column(String)
 
 
 def create_db_session(db_url):
@@ -115,5 +148,12 @@ def create_db_session(db_url):
 def create_all(db_url):
     engine = create_engine(db_url)
     Base.metadata.create_all(
-        engine, tables=[PullRequest.__table__, Member.__table__, Issue.__table__]
+        engine,
+        tables=[
+            PullRequest.__table__,
+            Member.__table__,
+            Issue.__table__,
+            Event.__table__,
+            EventPoll.__table__,
+        ],
     )
