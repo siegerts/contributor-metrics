@@ -1,5 +1,5 @@
 import os
-import logging
+from datetime import date, timedelta
 
 from chalice import Chalice
 
@@ -10,6 +10,7 @@ from chalicelib.github import (
     update_org_issues_daily,
     update_org_issues_closed_daily,
 )
+from chalicelib.nrt import TimelineAPI, update_issue_activity
 from chalicelib.utils import get_parameter
 from chalicelib.models import create_db_session, PullRequest, Issue
 
@@ -23,12 +24,12 @@ db = None
 
 
 if "AWS_CHALICE_CLI_MODE" not in os.environ:
-    logging.basicConfig(level=logging.INFO)
     # We're running in Lambda...yay
     token = get_parameter("/contributor-metrics/prod/token", True)
     db_url = get_parameter("/contributor-metrics/prod/db_url", True)
 
     gh = GitHubAPI(token=token)
+    nrt = TimelineAPI(token=token)
     db = create_db_session(db_url)
 
 
@@ -64,7 +65,12 @@ def every_30_min(event):
     update_org_issues_daily(db, gh, Issue, prs=False)
     update_org_issues_closed_daily(db, gh, Issue, prs=False)
 
-    # recently updated issues?
+
+@app.schedule("rate(3 minutes)")
+def every_3_min(event):
+    today = date.today()
+    since_dt = today - timedelta(days=2)
+    update_issue_activity(db, nrt, since_dt)
 
 
 # Run at 5:00am (UTC)/~midnight EST every day.
