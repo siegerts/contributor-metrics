@@ -1,8 +1,8 @@
-import logging
 import time
 from datetime import date, datetime, timedelta
 
 import requests
+
 
 try:
     from chalicelib.models import Issue, Member, PullRequest
@@ -108,7 +108,7 @@ class GitHubAPI:
         req = requests.get(req_url, headers=headers, params=params)
 
         if req.status_code not in range(200, 301):
-            logging.error(req_url, req.json())
+            print(req_url, req.json())
             raise GitHubAPIException(req.status_code, req.json())
 
         return req.json()
@@ -129,9 +129,9 @@ class GitHubAPI:
 
         if not remaining:
             pause = (reset - time.time()) + 3
-            logging.info(f"...waiting for {pause} seconds.")
+            print(f"...waiting for {pause} seconds.")
             time.sleep(pause)
-            logging.info("...resuming.")
+            print("...resuming.")
             return
 
 
@@ -188,7 +188,7 @@ def get_issues(gh, query):
     count = len(res["items"])
     issues = res["items"]
 
-    logging.info(f"{query} total count is : {tc}")
+    print(f"{query} total count is : {tc}")
     gh.check_rate("search")
 
     while count < tc:
@@ -199,7 +199,7 @@ def get_issues(gh, query):
         if recs:
             count = count + len(recs)
             issues = issues + recs
-            logging.info(count, "/", tc)
+            print(f"{count}/{tc}")
             gh.check_rate("search")
         else:
             break
@@ -307,7 +307,7 @@ def update_org_issues_daily(db, gh, db_model, prs=True):
                 new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                logging.info(f"new rec added. {issue['id']}")
+                print(f"new rec added. {issue['id']}")
         db.close()
 
 
@@ -327,7 +327,7 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
     since_dt = today - timedelta(weeks=week_interval)
 
     for repo in REPOS:
-        logging.info(f"updating {repo}...")
+        print(f"updating {repo}...")
         q = f"repo:aws-amplify/{repo} closed:>={since_dt}"
         if prs:
             q += " is:pr "
@@ -355,12 +355,12 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
                         dict(**issue)
                     )
                     db.commit()
-                    logging.info(f"updated rec. {issue_id}")
+                    print(f"updated rec. {issue_id}")
             else:
                 new_rec = db_model(**issue)
                 db.add(new_rec)
                 db.commit()
-                logging.info(f"new rec added. {issue['id']}")
+                print(f"new rec added. {issue['id']}")
     db.close()
 
 
@@ -392,7 +392,7 @@ def update_org_members_daily(db, gh):
             # add to existing for inactive
             # record check below
             existing_rec_ids.append(mem_id)
-            logging.info(f"new member added. {mem_id}")
+            print(f"new member added. {mem_id}")
 
     # inactive
     for rec_id in existing_rec_ids:
@@ -403,7 +403,7 @@ def update_org_members_daily(db, gh):
             db.commit()
 
     db.close()
-    logging.info("members updated.")
+    print("members updated.")
 
 
 # run this daily
@@ -447,7 +447,6 @@ if __name__ == "__main__":
     from models import Member, PullRequest, Issue, create_all, create_db_session
 
     load_dotenv()
-    logging.basicConfig(level=logging.DEBUG)
 
     token = os.getenv("GH_TOKEN")
     db_url = os.getenv("DB_URL")
