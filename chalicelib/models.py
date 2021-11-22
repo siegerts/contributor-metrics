@@ -125,8 +125,10 @@ class Event(Base):
     label = Column(JSONB)
     reactions = Column(JSONB)
     created_at = Column(DateTime)
+    updated_at = Column(DateTime)
     node_id = Column(String)
     user = Column(JSONB)
+    author_association = Column(String)
     username = Column(String)
 
 

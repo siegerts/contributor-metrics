@@ -11,8 +11,6 @@ except ModuleNotFoundError:
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
-# Check reaction count
-
 REPOS = [
     "amplify-cli",
     "amplify-js",
@@ -114,7 +112,7 @@ class GitHubAPI:
         return req.json()
 
     def check_rate(self, resource):
-        """Helper that checks the rate limit for a given resource and pauses
+        """Helper that checks the rate limit from the API for a given resource and pauses
            if amount is depleted for instance token.
 
         Args:
