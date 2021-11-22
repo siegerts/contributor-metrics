@@ -1,3 +1,12 @@
+"""
+    nrt
+    ~~~~~~~~
+
+    Near real-time GitHub issue timeline event updater.
+
+
+"""
+
 from datetime import date, timedelta
 import time
 import requests
@@ -41,12 +50,13 @@ class TimelineAPI(GitHubAPI):
             raise GitHubAPIException(req.status_code, req.json())
 
 
-def create_or_update_etag(etag, cached_etag, issue_id, page_no, issue_updated_at):
+def create_or_update_etag(db, etag, cached_etag, issue_id, page_no, issue_updated_at):
     """Update cache based on etag header from GitHub
     Timeline API response. The cache is at
     the timeline url + page number level.
 
     Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
         etag (str): etag from API response
         cached_etag (str): etag from previous request
         issue_id (int): GitHub issue id
@@ -71,7 +81,7 @@ def create_or_update_etag(etag, cached_etag, issue_id, page_no, issue_updated_at
         db.commit()
 
 
-def create_or_update_events(events, issue_id, org, repo):
+def create_or_update_events(db, events, issue_id, org, repo):
     """Find all related events in the DB and update accordingly based on
     reactions and updated_at values. This logic is only applied to these fields
     as other event types trigger net new records.
@@ -79,6 +89,7 @@ def create_or_update_events(events, issue_id, org, repo):
     If not in the DB, then create new records.
 
     Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
         events ([dict]): Events returned from the Timeline API for a given issue
         issue_id (int): Issue Id related to events
         org (str): GitHub organization
@@ -162,10 +173,14 @@ def create_or_update_events(events, issue_id, org, repo):
             db.commit()
 
 
-def get_timeline_events(issue_id, existing_cache_ids, timeline_url, issue_updated_at):
+def get_timeline_events(
+    db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
+):
     """Retrieve paginated events from Issue Timeline API
 
     Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        gh (GitHubAPI): instance of API helper with token
         issue_id (int): GitHub issue id
         existing_cache_ids ([{str:<rec>}]): Mapping of {issue-page_no: rec} of all existing cache ids
         timeline_url (str): Timeline API URL for GitHub issue
@@ -216,7 +231,7 @@ def get_timeline_events(issue_id, existing_cache_ids, timeline_url, issue_update
         etag = req.headers["ETag"]
         if etag:
             create_or_update_etag(
-                etag, cached_etag, issue_id, page_no, issue_updated_at
+                db, etag, cached_etag, issue_id, page_no, issue_updated_at
             )
 
     return events
@@ -259,9 +274,9 @@ def update_issue_activity(db, gh, since_dt=None):
             timeline_url = issue["timeline_url"]
 
             events = get_timeline_events(
-                issue_id, existing_cache_ids, timeline_url, issue_updated_at
+                db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
             )
-            create_or_update_events(events, issue_id, org, repo)
+            create_or_update_events(db, events, issue_id, org, repo)
 
     db.close()
 

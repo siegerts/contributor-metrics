@@ -29,7 +29,7 @@ if "AWS_CHALICE_CLI_MODE" not in os.environ:
     db_url = get_parameter("/contributor-metrics/prod/db_url", True)
 
     gh = GitHubAPI(token=token)
-    nrt = TimelineAPI(token=token)
+    nrt_gh = TimelineAPI(token=token)
     db = create_db_session(db_url)
 
 
@@ -66,11 +66,11 @@ def every_30_min(event):
     update_org_issues_closed_daily(db, gh, Issue, prs=False)
 
 
-@app.schedule("rate(3 minutes)")
-def every_3_min(event):
+@app.schedule("rate(10 minutes)")
+def nrt_events(event):
     today = date.today()
-    since_dt = today - timedelta(days=2)
-    update_issue_activity(db, nrt, since_dt)
+    since_dt = today - timedelta(days=1)
+    update_issue_activity(db, nrt_gh, since_dt)
 
 
 # Run at 5:00am (UTC)/~midnight EST every day.
