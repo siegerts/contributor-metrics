@@ -12,14 +12,26 @@ import time
 import requests
 
 try:
-    from chalicelib.github import REPOS, GitHubAPI, GitHubAPIException, get_issues
+    from chalicelib.github import (
+        REPOS,
+        GitHubAPI,
+        GitHubAPIException,
+        get_issues,
+        create_or_update_issue,
+    )
 except ModuleNotFoundError:
-    from github import REPOS, GitHubAPI, GitHubAPIException, get_issues
+    from github import (
+        REPOS,
+        GitHubAPI,
+        GitHubAPIException,
+        get_issues,
+        create_or_update_issue,
+    )
 
 try:
-    from chalicelib.models import Event, EventPoll, create_all, create_db_session
+    from chalicelib.models import Issue, Event, EventPoll, create_all, create_db_session
 except ModuleNotFoundError:
-    from models import Event, EventPoll, create_all, create_db_session
+    from models import Issue, Event, EventPoll, create_all, create_db_session
 
 
 class TimelineAPI(GitHubAPI):
@@ -268,10 +280,15 @@ def update_issue_activity(db, gh, since_dt=None):
         # }
         existing_cache_ids = {f"{rec.id}-{rec.page_no}": rec for rec in cache_recs}
 
+        # find existing issues
+        existing_recs = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
+        existing_rec_ids = {rec.id: rec for rec in existing_recs}
+
         for issue in issues:
             issue_id = issue["id"]
             issue_updated_at = issue["updated_at"]
             timeline_url = issue["timeline_url"]
+            create_or_update_issue(db, Issue, issue, existing_rec_ids)
 
             events = get_timeline_events(
                 db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at

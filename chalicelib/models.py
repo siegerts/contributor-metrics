@@ -29,7 +29,7 @@ class Member(Base):
     gists_url = Column(String)
     gravatar_id = Column(String)
     html_url = Column(String)
-    login = Column(String)
+    login = Column(String, unique=True)
     node_id = Column(String)
     organizations_url = Column(String)
     received_events_url = Column(String)

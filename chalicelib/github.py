@@ -340,26 +340,34 @@ def update_org_issues_closed_daily(db, gh, db_model, prs=True, week_interval=1):
         existing_rec_ids = {rec.id: rec for rec in existing_recs}
 
         for issue in issues:
-            issue_id = issue["id"]
-            if issue_id in existing_rec_ids.keys():
-                # check last updated date diffs between db and remote
-                if (
-                    issue["updated_at"]
-                    != existing_rec_ids[issue_id].updated_at.isoformat() + "Z"
-                ):
-                    # update
-                    del issue["id"]
-                    db.query(db_model).filter(db_model.id == issue_id).update(
-                        dict(**issue)
-                    )
-                    db.commit()
-                    print(f"updated rec. {issue_id}")
-            else:
-                new_rec = db_model(**issue)
-                db.add(new_rec)
-                db.commit()
-                print(f"new rec added. {issue['id']}")
+            create_or_update_issue(db, db_model, issue, existing_rec_ids)
     db.close()
+
+
+def create_or_update_issue(db, db_model, issue, existing_rec_ids):
+    """Create or update issue DB record.
+
+    Args:
+        db (sqlalchemy DB session): sqlalchemy DB session
+        db_model (sqlalchemy model): DB table model that corresponds with issue type
+        issue (dict): GitHub issue
+        existing_rec_ids ([int]): List of GitHub issue ids to compare issue againts
+    """
+    issue_id = issue["id"]
+    issue_updated_at = issue["updated_at"]
+    if issue_id in existing_rec_ids.keys():
+        # check last updated date diffs between db and remote
+        if issue_updated_at != existing_rec_ids[issue_id].updated_at.isoformat() + "Z":
+            # update
+            del issue["id"]
+            db.query(db_model).filter(db_model.id == issue_id).update(dict(**issue))
+            db.commit()
+            print(f"updated issue rec. {issue_id}")
+    else:
+        new_rec = db_model(**issue)
+        db.add(new_rec)
+        db.commit()
+        print(f"new issue rec added. {issue_id}")
 
 
 def update_org_members_daily(db, gh):
