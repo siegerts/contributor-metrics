@@ -109,6 +109,12 @@ class GitHubAPI:
             print(req_url, req.json())
             raise GitHubAPIException(req.status_code, req.json())
 
+        if req.headers["x-ratelimit-remaining"] == 0:
+            pause = (req.headers["x-ratelimit-reset"] - time.time()) + 3
+            print(f"...waiting for {pause} seconds.")
+            time.sleep(pause)
+            print("...resuming.")
+
         return req.json()
 
     def check_rate(self, resource):
