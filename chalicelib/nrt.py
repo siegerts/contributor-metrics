@@ -1,10 +1,10 @@
 """
-    nrt
-    ~~~~~~~~
+    nrt.py
+    ~~~~~~
 
     Near real-time GitHub issue timeline event updater.
 
-    TODO: handle cross-references
+    TODO: handle issues cross-references
 
 
 """

@@ -1,3 +1,12 @@
+"""
+    github.py
+    ~~~~~~~~~
+
+    Fetch and update GitHub issue and PR data.
+
+
+"""
+
 import time
 from datetime import date, datetime, timedelta
 
