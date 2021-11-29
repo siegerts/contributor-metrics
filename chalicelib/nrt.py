@@ -4,6 +4,8 @@
 
     Near real-time GitHub issue timeline event updater.
 
+    TODO: handle cross-references
+
 
 """
 
@@ -224,14 +226,14 @@ def get_timeline_events(
         if existing_cache_ids.get(etag_key, None):
             try:
                 cached_etag = existing_cache_ids[etag_key].etag
-                print("cache hit")
+                # print("cache hit")
             except (KeyError, AttributeError):
                 pass
 
         req = gh.get_timeline(timeline_url, etag=cached_etag, **params)
 
         if not req:
-            print("no res")
+            # print("no res")
             next = False
             continue
 
