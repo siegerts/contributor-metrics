@@ -33,17 +33,12 @@ if "AWS_CHALICE_CLI_MODE" not in os.environ:
     db = create_db_session(db_url)
 
 
-# @app.route('/')
-# def index():
-#     return {'hello': 'world'}
-
-
 @app.schedule("rate(30 minutes)")
 def every_30_min(event):
     # 5 days back
     # record any new PRs created within
     # the last few days
-    # can narrow this intervat in the future
+    # can narrow this interval in the future
     update_org_issues_daily(db, gh, PullRequest, prs=True)
 
     # one week back
@@ -60,7 +55,6 @@ def every_30_min(event):
     # store any new team members
     update_org_members_daily(db, gh)
 
-    # ---
     # issues
     update_org_issues_daily(db, gh, Issue, prs=False)
     update_org_issues_closed_daily(db, gh, Issue, prs=False)

@@ -399,7 +399,7 @@ def update_org_members_daily(db, gh):
     mems_ids = [mem["id"] for mem in mems]
 
     # find existing
-    existing_recs = db.query(Member).filter(Member.id.in_(mems_ids)).all()
+    existing_recs = db.query(Member).all()
     existing_rec_ids = [rec.id for rec in existing_recs]
 
     # new
@@ -418,10 +418,20 @@ def update_org_members_daily(db, gh):
     # inactive
     for rec_id in existing_rec_ids:
         if rec_id not in mems_ids:
-            db.query(Member).filter(Member.id == rec_id).update(
-                dict(inactive_dt=datetime.now(), inactive=True)
+            rec = (
+                db.query(Member)
+                .filter(Member.id == rec_id, Member.inactive == False)
+                .first()
             )
-            db.commit()
+
+            if rec:
+                rec.inactive = True
+                rec.inactive_dt = datetime.now()
+                db.commit()
+                print(f"member set as inactive. {rec_id}")
+            else:
+                # inactive member already updated
+                pass
 
     db.close()
     print("members updated.")
