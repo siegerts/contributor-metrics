@@ -69,6 +69,17 @@ def create_or_update_etag(db, etag, cached_etag, issue_id, page_no, issue_update
     Timeline API response. The cache is at
     the timeline url + page number level.
 
+    The etag will change when a reaction is added to 
+    a comment, and then need to check reactions == db.reactions
+
+    The challenge is to know when reactions are just 
+    happening in the background?
+
+    The assumption is that an issue will get comments as 
+    reactions are coming in. This will be caught as an 
+    issue updates and the new reactions reconciled when 
+    the events are processed.
+
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
         etag (str): etag from API response
@@ -96,11 +107,16 @@ def create_or_update_etag(db, etag, cached_etag, issue_id, page_no, issue_update
 
 
 def create_or_update_events(db, events, issue_id, org, repo):
-    """Find all related events in the DB and update accordingly based on
-    reactions and updated_at values. This logic is only applied to these fields
-    as other event types trigger net new records.
+    """Find all related events in the DB and update 
+    accordingly based on reactions and updated_at values. 
+    This logic is only applied to these fields as other 
+    event types trigger net new records.
 
     If not in the DB, then create new records.
+
+    Note: `cross-referenced` - need to skip for now since
+    no `event_id`. 
+
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
