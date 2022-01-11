@@ -12,7 +12,8 @@ chalice deploy
 
 ### Secrets
 
-Create parameters in parameter store to coincide with the pattern as specified in `app.py`. For example -
+Create secure parameters (_SecureString_) in AWS Systems Manager
+Parameter Store to coincide with the pattern as specified in `app.py`. For example -
 
 ```
 token = get_parameter("/contributor-metrics/{env-name}/{var-name}", True)
