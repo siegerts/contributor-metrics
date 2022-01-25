@@ -102,7 +102,7 @@ def reconcile_transferred_issues(db, gh):
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
-        gh (GitHubAPI): instance of API helper with token
+        gh (TransferAPI): instance of TransferAPI helper with token
     """
     with db as con:
         transferred_issues = con.execute(FIND_TRANSFERRED_ISSUES_STMT)
