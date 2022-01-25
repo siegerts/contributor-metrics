@@ -69,15 +69,15 @@ def create_or_update_etag(db, etag, cached_etag, issue_id, page_no, issue_update
     Timeline API response. The cache is at
     the timeline url + page number level.
 
-    The etag will change when a reaction is added to 
+    The etag will change when a reaction is added to
     a comment, and then need to check reactions == db.reactions
 
-    The challenge is to know when reactions are just 
+    The challenge is to know when reactions are just
     happening in the background?
 
-    The assumption is that an issue will get comments as 
-    reactions are coming in. This will be caught as an 
-    issue updates and the new reactions reconciled when 
+    The assumption is that an issue will get comments as
+    reactions are coming in. This will be caught as an
+    issue updates and the new reactions reconciled when
     the events are processed.
 
     Args:
@@ -107,15 +107,15 @@ def create_or_update_etag(db, etag, cached_etag, issue_id, page_no, issue_update
 
 
 def create_or_update_events(db, events, issue_id, org, repo):
-    """Find all related events in the DB and update 
-    accordingly based on reactions and updated_at values. 
-    This logic is only applied to these fields as other 
+    """Find all related events in the DB and update
+    accordingly based on reactions and updated_at values.
+    This logic is only applied to these fields as other
     event types trigger net new records.
 
     If not in the DB, then create new records.
 
     Note: `cross-referenced` - need to skip for now since
-    no `event_id`. 
+    no `event_id`.
 
 
     Args:
@@ -126,7 +126,7 @@ def create_or_update_events(db, events, issue_id, org, repo):
         repo (str): GitHub repo
     """
     if not events:
-        print("no events.")
+        # print("no events.")
         return
     else:
         # evt ids from api
@@ -274,7 +274,6 @@ def update_issue_activity(db, gh, since_dt=None):
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
         gh (GitHubAPI): instance of API helper with token
-        db_model (sqlalchemy model): DB table model that corresponds with datatype
     """
     org = "aws-amplify"
 
