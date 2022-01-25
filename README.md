@@ -90,7 +90,6 @@ Activate the environment:
 
 ```
 pyenv contributor-metrics
-
 ```
 
 ### Custom policy

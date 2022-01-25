@@ -109,7 +109,7 @@ def reconcile_transferred_issues(db, gh):
 
         gh.check_rate("core")
 
-        print(f"checking duplicates issues for transfers...")
+        print(f"checking duplicate issues for transfers...")
 
         for issue in transferred_issues:
             # if `Location` header present then this record is stale
