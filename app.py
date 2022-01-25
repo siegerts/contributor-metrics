@@ -11,6 +11,7 @@ from chalicelib.github import (
     update_org_issues_closed_daily,
 )
 from chalicelib.nrt import TimelineAPI, update_issue_activity
+from chalicelib.transfers import TransferAPI, reconcile_transferred_issues
 from chalicelib.utils import get_parameter
 from chalicelib.models import create_db_session, PullRequest, Issue
 
@@ -30,6 +31,7 @@ if "AWS_CHALICE_CLI_MODE" not in os.environ:
 
     gh = GitHubAPI(token=token)
     nrt_gh = TimelineAPI(token=token)
+    transfers_gh = TransferAPI(token=token)
     db = create_db_session(db_url)
 
 
@@ -59,12 +61,16 @@ def every_30_min(event):
     update_org_issues_daily(db, gh, Issue, prs=False)
     update_org_issues_closed_daily(db, gh, Issue, prs=False)
 
+    # transfers
+    reconcile_transferred_issues(db, transfers_gh)
+
 
 @app.schedule("rate(10 minutes)")
 def nrt_events(event):
     today = date.today()
     since_dt = today - timedelta(days=1)
     update_issue_activity(db, nrt_gh, since_dt)
+    reconcile_transferred_issues(db, transfers_gh)
 
 
 # Run at 5:00am (UTC)/~midnight EST every day.

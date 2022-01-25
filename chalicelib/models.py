@@ -140,6 +140,32 @@ class EventPoll(Base):
     etag = Column(String)
 
 
+class Transfer(Base):
+    __tablename__ = "transfers"
+    issue_id = Column(BigInteger, primary_key=True)
+    new_issue_id = Column(BigInteger, primary_key=True)
+
+    url = Column(String)
+    number = Column(Integer)
+    repo = Column(String)
+    title = Column(String)
+    body = Column(String)
+    created_at = Column(DateTime)
+    closed_at = Column(DateTime)
+    state = Column(String)
+    org = Column(String)
+    assignee = Column(JSONB)
+    assignees = Column(ARRAY(JSON))
+    labels = Column(ARRAY(JSON))
+
+    new_repo = Column(String)
+    new_html_url = Column(String)
+    new_url = Column(String)
+    new_number = Column(Integer)
+    user = Column(JSONB)
+    username = Column(String)
+
+
 def create_db_session(db_url):
     engine = create_engine(db_url)
     DBSession = sessionmaker(bind=engine)
@@ -155,6 +181,7 @@ def create_all(db_url):
             PullRequest.__table__,
             Member.__table__,
             Issue.__table__,
+            Transfer.__table__,
             Event.__table__,
             EventPoll.__table__,
         ],
