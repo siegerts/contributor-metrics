@@ -22,7 +22,7 @@ db_url = get_parameter("/contributor-metrics/{env-name}/{var-name", True)
 
 ### Database
 
-Create the database tables using `create_all()`. This will create `PullRequest`, `Member`, `Issue`, `Event`, and `EventPoll` tables. The below example loads the environment variables using `dotenv`. When deployed, these secrets are retrieved from SSM (above).
+Create the database tables using `create_all()`. This will create `PullRequest`, `Member`, `Issue`, `Event`, `Transfer`, and `EventPoll` tables. The below example loads the environment variables using `dotenv`. When deployed, these secrets are retrieved from SSM (above).
 
 ```python
 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
 ### Lambda environment
 
-The Lambdas make use of Python, SQlAlchemy, and the GitHub API.
+The Lambdas make use of Python, SQLAlchemy, and the GitHub API.
 
 To develop locally, create a Python virtual environment using `requirements.txt`.
 
