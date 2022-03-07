@@ -24,7 +24,7 @@ REPOS = [
     "amplify-cli",
     "amplify-js",
     "amplify-ui",
-    "amplify-console",
+    "amplify-hosting",
     "amplify-codegen",
     "amplify-adminui",
     "amplify-flutter",
