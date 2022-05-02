@@ -30,7 +30,8 @@ REPOS = [
     "amplify-flutter",
     "amplify-ios",
     "amplify-android",
-    "docs",
+    "amplify-category-api",
+    "docs",  # added 5/2/2022
 ]
 
 PERIODS = [
