@@ -37,14 +37,22 @@ except ModuleNotFoundError:
 
 FIND_TRANSFERRED_ISSUES_STMT = text(
     """
-SELECT * FROM public.issues WHERE username || created_at in 
-(SELECT
-	username || created_at as id
-	FROM public.issues
-	GROUP BY created_at, username
- 	HAVING count(*) > 1
-)
-ORDER BY created_at, title, updated_at;
+SELECT
+	*
+FROM
+	public.issues
+WHERE
+	username || created_at in(
+		SELECT
+			username || created_at AS id FROM public.issues
+		GROUP BY
+			created_at, username
+		HAVING
+			count(*) > 1)
+ORDER BY
+	created_at,
+	title,
+	updated_at;
 """
 )
 
@@ -95,8 +103,8 @@ def reconcile_transferred_issues(db, gh):
     Reactions are also transferred.
 
     https://docs.github.com/en/issues/tracking-your-work-with-issues/transferring-an-issue-to-another-repository
-    > When you transfer an issue, comments and assignees are retained.
-    > The issue's labels and milestones are not retained.
+    > When you transfer an issue, comments, labels and assignees are retained.
+    > The milestones are not retained.
     > This issue will stay on any user-owned or organization-wide
     > project boards and be removed from any repository project boards.
 

@@ -48,7 +48,7 @@ def update_members(users):
             db.add(new_rec)
             db.commit()
 
-            print(f"new member added. {login}")
+            print(f"Inactive member saved: {login}")
     db.close()
 
 

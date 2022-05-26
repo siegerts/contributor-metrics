@@ -52,7 +52,6 @@ class TimelineAPI(GitHubAPI):
             return None
         if req.status_code == 200:
             # check rate from headers
-            # print("remaining ", req.headers["x-ratelimit-remaining"])
             if req.headers["x-ratelimit-remaining"] == 0:
                 pause = (req.headers["x-ratelimit-reset"] - time.time()) + 3
                 print(f"...waiting for {pause} seconds.")
