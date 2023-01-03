@@ -7,34 +7,35 @@
     TODO: handle issues cross-references
     TODO: nrt for pull requests
 
-
 """
 
-from datetime import date, timedelta
 import time
-import requests
+from datetime import date, timedelta
+
+import requests  # type: ignore
+
 
 try:
     from chalicelib.github import (
         REPOS,
         GitHubAPI,
         GitHubAPIException,
-        get_issues,
         create_or_update_issue,
+        get_issues,
     )
+    from chalicelib.models import Event, EventPoll, Issue, create_db_session
+    from chalicelib.utils import send_plain_email
+
 except ModuleNotFoundError:
     from github import (
         REPOS,
         GitHubAPI,
         GitHubAPIException,
-        get_issues,
         create_or_update_issue,
+        get_issues,
     )
-
-try:
-    from chalicelib.models import Issue, Event, EventPoll, create_db_session
-except ModuleNotFoundError:
-    from models import Issue, Event, EventPoll, create_db_session
+    from models import Event, EventPoll, Issue, create_db_session
+    from utils import send_plain_email
 
 
 class TimelineAPI(GitHubAPI):
@@ -61,6 +62,7 @@ class TimelineAPI(GitHubAPI):
             return req
         else:
             print(url)
+            send_plain_email(f"{url}: {req.status_code} : {req.json()}")
             raise GitHubAPIException(req.status_code, req.json())
 
 
@@ -266,6 +268,7 @@ def get_timeline_events(
 
     return events
 
+
 # TODO: adjust so that PRs are grabbed too ...
 def update_issue_activity(db, gh, since_dt=None):
     """Updates Timeline event activity for recently updated GitHub
@@ -318,7 +321,7 @@ def update_issue_activity(db, gh, since_dt=None):
 if __name__ == "__main__":
     import os
 
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore
 
     load_dotenv()
 

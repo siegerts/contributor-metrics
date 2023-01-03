@@ -12,18 +12,19 @@ from datetime import date, datetime, timedelta
 
 import requests
 
-
 try:
-    from chalicelib.models import Issue, Member, PullRequest
     from chalicelib.constants import REPOS
+    from chalicelib.models import Issue, Member, PullRequest
+    from chalicelib.utils import send_plain_email
 except ModuleNotFoundError:
-    from models import Issue, Member, PullRequest
     from constants import REPOS
+    from models import Issue, Member, PullRequest
+    from utils import send_plain_email
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 ORG = "aws-amplify"
-gh_api_version = '2022-11-28'
+gh_api_version = "2022-11-28"
 
 
 class GitHubAPIException(Exception):
@@ -38,7 +39,9 @@ class GitHubAPIException(Exception):
 
 
 class GitHubAPI:
-    def __init__(self, gh_api="https://api.github.com", gh_api_version = '2022-11-28', token=None):
+    def __init__(
+        self, gh_api="https://api.github.com", gh_api_version="2022-11-28", token=None
+    ):
         self.gh_api = gh_api
         self.gh_api_version = gh_api_version
         self._token = token
@@ -81,6 +84,7 @@ class GitHubAPI:
 
         if req.status_code not in range(200, 301):
             print(req_url, req.json())
+            send_plain_email(f"{req_url}: {req.status_code} : {req.json()}")
             raise GitHubAPIException(req.status_code, req.json())
 
         if req.headers["x-ratelimit-remaining"] == 0:
@@ -390,8 +394,9 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
 
 if __name__ == "__main__":
     import os
+
     from dotenv import load_dotenv
-    from models import Member, PullRequest, Issue, create_db_session
+    from models import Issue, Member, PullRequest, create_db_session
 
     load_dotenv()
 

@@ -3,6 +3,11 @@
   "app_name": "contributor-metrics",
   "stages": {
     "dev": {
+      "environment_variables": {
+        "STAGE": "dev",
+        "SEND_FROM_EMAIL": "ssieger@amazon.com",
+        "SEND_TO_EMAIL": "ssieger@amazon.com"
+      },
       "automatic_layer": true,
       "api_gateway_stage": "api",
       "lambda_timeout": 300,
