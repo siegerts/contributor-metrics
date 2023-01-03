@@ -4,7 +4,7 @@ REPOS = [
     "amplify-ui",
     "amplify-hosting",
     "amplify-codegen",
-    "amplify-studio", # switched from amplify-adminui 1/3/2023
+    "amplify-studio",  # switched from amplify-adminui 1/3/2023
     "amplify-flutter",
     # "amplify-ios",
     "amplify-swift",  # added 10/17/2022
