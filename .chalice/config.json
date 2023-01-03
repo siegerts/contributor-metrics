@@ -3,6 +3,7 @@
   "app_name": "contributor-metrics",
   "stages": {
     "dev": {
+      "automatic_layer": true,
       "api_gateway_stage": "api",
       "lambda_timeout": 300,
       "autogen_policy": false,
