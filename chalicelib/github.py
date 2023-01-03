@@ -18,11 +18,12 @@ try:
     from chalicelib.constants import REPOS
 except ModuleNotFoundError:
     from models import Issue, Member, PullRequest
-    from chalicelib import REPOS
+    from constants import REPOS
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 ORG = "aws-amplify"
+gh_api_version = '2022-11-28'
 
 
 class GitHubAPIException(Exception):
@@ -37,8 +38,9 @@ class GitHubAPIException(Exception):
 
 
 class GitHubAPI:
-    def __init__(self, gh_api="https://api.github.com", token=None):
+    def __init__(self, gh_api="https://api.github.com", gh_api_version = '2022-11-28', token=None):
         self.gh_api = gh_api
+        self.gh_api_version = gh_api_version
         self._token = token
 
     @property
@@ -68,6 +70,7 @@ class GitHubAPI:
         headers = {
             "Accept": "application/" + media_type,
             "Authorization": "token " + self.token,
+            "X-GitHub-Api-Version": self.gh_api_version,
         }
 
         if media_type:

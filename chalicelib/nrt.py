@@ -333,5 +333,5 @@ if __name__ == "__main__":
     # backfill
     # since_dt = today - timedelta(weeks=8)
 
-    since_dt = today - timedelta(days=14)
+    since_dt = today - timedelta(days=1)
     update_issue_activity(db, gh, since_dt)
