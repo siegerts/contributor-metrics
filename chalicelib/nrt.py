@@ -5,6 +5,7 @@
     Near real-time GitHub issue timeline event updater.
 
     TODO: handle issues cross-references
+    TODO: nrt for pull requests
 
 
 """
@@ -31,9 +32,9 @@ except ModuleNotFoundError:
     )
 
 try:
-    from chalicelib.models import Issue, Event, EventPoll, create_all, create_db_session
+    from chalicelib.models import Issue, Event, EventPoll, create_db_session
 except ModuleNotFoundError:
-    from models import Issue, Event, EventPoll, create_all, create_db_session
+    from models import Issue, Event, EventPoll, create_db_session
 
 
 class TimelineAPI(GitHubAPI):
@@ -265,7 +266,7 @@ def get_timeline_events(
 
     return events
 
-
+# TODO: adjust so that PRs are grabbed too ...
 def update_issue_activity(db, gh, since_dt=None):
     """Updates Timeline event activity for recently updated GitHub
     issues
@@ -328,11 +329,9 @@ if __name__ == "__main__":
     gh = TimelineAPI(token=token)
     db = create_db_session(db_url)
 
-    # create_all(db_url)
-
     today = date.today()
     # backfill
     # since_dt = today - timedelta(weeks=8)
 
-    since_dt = today - timedelta(days=1)
+    since_dt = today - timedelta(days=14)
     update_issue_activity(db, gh, since_dt)

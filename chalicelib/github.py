@@ -15,53 +15,14 @@ import requests
 
 try:
     from chalicelib.models import Issue, Member, PullRequest
+    from chalicelib.constants import REPOS
 except ModuleNotFoundError:
     from models import Issue, Member, PullRequest
+    from chalicelib import REPOS
 
 # from sqlalchemy.exc import IntegrityError, ProgrammingError
 
-REPOS = [
-    "amplify-cli",
-    "amplify-js",
-    "amplify-ui",
-    "amplify-hosting",
-    "amplify-codegen",
-    "amplify-adminui",
-    "amplify-flutter",
-    "amplify-ios",
-    "amplify-android",
-    "amplify-category-api",
-    "docs",  # added 5/2/2022
-]
-
-PERIODS = [
-    ("2019-01-01", "2019-03-31"),  # q1
-    ("2019-04-01", "2019-06-30"),  # q2
-    ("2019-07-01", "2019-09-30"),  # q3
-    ("2019-10-01", "2019-12-31"),  # q4
-    #
-    ("2020-01-01", "2020-03-31"),
-    ("2020-04-01", "2020-06-30"),
-    ("2020-07-01", "2020-09-30"),
-    ("2020-10-01", "2020-12-31"),
-    #
-    ("2021-01-01", "2021-03-31"),
-    ("2021-04-01", "2021-06-30"),
-    ("2021-07-01", "2021-09-30"),
-    ("2021-10-01", "2021-12-31"),
-]
-
-ISSUE_PERIODS = [
-    ("2017-01-01", "2017-03-31"),  # q1
-    ("2017-04-01", "2017-06-30"),  # q2
-    ("2017-07-01", "2017-09-30"),  # q3
-    ("2017-10-01", "2017-12-31"),  # q4
-    #
-    ("2018-01-01", "2018-03-31"),
-    ("2018-04-01", "2018-06-30"),
-    ("2018-07-01", "2018-09-30"),
-    ("2018-10-01", "2018-12-31"),
-] + PERIODS
+ORG = "aws-amplify"
 
 
 class GitHubAPIException(Exception):
@@ -149,36 +110,6 @@ class GitHubAPI:
             return
 
 
-def backfill_pr_queries():
-    """Generate historical GitHub queries for PRs
-
-    Returns:
-        list: list of queries
-    """
-    queries = []
-    for repo in REPOS:
-        for period in PERIODS:
-            queries += [
-                f"repo:aws-amplify/{repo} is:pr created:{period[0]}..{period[1]}"
-            ]
-    return queries
-
-
-def backfill_issue_queries():
-    """Generate historical GitHub queries for issues
-
-    Returns:
-        list: list of queries
-    """
-    queries = []
-    for repo in REPOS:
-        for period in ISSUE_PERIODS:
-            queries += [
-                f"repo:aws-amplify/{repo} is:issue created:{period[0]}..{period[1]}"
-            ]
-    return queries
-
-
 def get_issues(gh, query):
     """Search and format issues from GitHub API.
 
@@ -264,26 +195,6 @@ def get_org_members(gh):
     return org_members
 
 
-def backfill_org_prs(db, gh):
-    queries = backfill_pr_queries()
-    for q in queries:
-        prs = get_issues(gh, query=q)
-        recs = [PullRequest(**rec) for rec in prs]
-        db.add_all(recs)
-        db.commit()
-    db.close()
-
-
-def backfill_org_issues(gh):
-    queries = backfill_issue_queries()
-    for q in queries:
-        issues = get_issues(gh, query=q)
-        recs = [Issue(**rec) for rec in issues]
-        db.add_all(recs)
-        db.commit()
-    db.close()
-
-
 def update_org_issues_daily(db, gh, db_model, prs=True):
     """Retrieve items created on or before today-5 days
        and store new records in db
@@ -315,6 +226,7 @@ def update_org_issues_daily(db, gh, db_model, prs=True):
         existing_rec_ids = [rec.id for rec in existing_recs]
 
         # add new recs
+        # TODO: handler for TypeError to catch GH API schema changes
         for issue in issues:
             issue_id = issue["id"]
             if issue_id not in existing_rec_ids:
@@ -448,7 +360,7 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
         gh (GitHubAPI): instance of API helper with token
-        since_dt (str, optional): [description]. Defaults to None.
+        since_dt (str, optional): [description]. Defaults to today-52 weeks.
     """
     if not since_dt:
         today = date.today()
@@ -476,28 +388,23 @@ def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
-    from models import Member, PullRequest, Issue, create_all, create_db_session
+    from models import Member, PullRequest, Issue, create_db_session
 
     load_dotenv()
 
     token = os.getenv("GH_TOKEN")
     db_url = os.getenv("DB_URL")
 
-    # ---
     gh = GitHubAPI(token=token)
     db = create_db_session(db_url)
-    # ---
-    # create_all(db_url)
-    # backfill_org_prs(gh)
-    # backfill_org_issues(gh)
 
-    # prs
+    # # prs
     update_org_issues_daily(db, gh, PullRequest, prs=True)
     update_org_issues_closed_daily(db, gh, PullRequest, prs=True)
 
-    # issues
+    # # issues
     update_org_issues_daily(db, gh, Issue, prs=False)
     update_org_issues_closed_daily(db, gh, Issue, prs=False)
 
     update_org_members_daily(db, gh)
-    # reconcile_unmerged_closed_prs(db, gh, "2019-01-01")
+    reconcile_unmerged_closed_prs(db, gh, "2019-01-01")
