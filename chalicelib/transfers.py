@@ -15,10 +15,6 @@ from sqlalchemy.exc import IntegrityError
 
 try:
     from chalicelib.github import GitHubAPI
-except ModuleNotFoundError:
-    from github import GitHubAPI
-
-try:
     from chalicelib.models import (
         create_db_session,
         Issue,
@@ -27,6 +23,7 @@ try:
         EventPoll,
     )
 except ModuleNotFoundError:
+    from github import GitHubAPI
     from models import (
         create_db_session,
         Issue,
