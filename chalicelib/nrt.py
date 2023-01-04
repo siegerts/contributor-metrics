@@ -23,7 +23,13 @@ try:
         create_or_update_issue,
         get_issues,
     )
-    from chalicelib.models import Event, EventPoll, Issue, create_db_session
+    from chalicelib.models import (
+        Event,
+        EventPoll,
+        Issue,
+        PullRequest,
+        create_db_session,
+    )
     from chalicelib.utils import send_plain_email
 
 except ModuleNotFoundError:
@@ -34,7 +40,7 @@ except ModuleNotFoundError:
         create_or_update_issue,
         get_issues,
     )
-    from models import Event, EventPoll, Issue, create_db_session
+    from models import Event, EventPoll, Issue, PullRequest, create_db_session
     from utils import send_plain_email
 
 
@@ -129,7 +135,6 @@ def create_or_update_events(db, events, issue_id, org, repo):
         repo (str): GitHub repo
     """
     if not events:
-        # print("no events.")
         return
     else:
         # evt ids from api
@@ -270,14 +275,16 @@ def get_timeline_events(
     return events
 
 
-# TODO: adjust so that PRs are grabbed too ...
-def update_issue_activity(db, gh, since_dt=None):
+def update_issue_activity(db, gh, db_model, since_dt=None, prs=True):
     """Updates Timeline event activity for recently updated GitHub
     issues
 
     Args:
         db (sqlalchemy DB session): sqlalchemy DB session
         gh (GitHubAPI): instance of API helper with token
+        db_model (sqlalchemy model): DB table model that corresponds with datatype
+        prs (bool, optional): Flag to indicate whether to search
+        PRs or issues. Defaults to True (i.e. search PRs).
     """
     org = "aws-amplify"
 
@@ -286,7 +293,11 @@ def update_issue_activity(db, gh, since_dt=None):
 
     for repo in REPOS:
         q = f"repo:{org}/{repo} updated:>={since_dt}"
-        q += " is:issue "
+
+        if prs:
+            q += " is:pr "
+        else:
+            q += " is:issue "
 
         issues = get_issues(gh, query=q)
         issue_ids = [issue["id"] for issue in issues]
@@ -302,19 +313,22 @@ def update_issue_activity(db, gh, since_dt=None):
         existing_cache_ids = {f"{rec.id}-{rec.page_no}": rec for rec in cache_recs}
 
         # find existing issues
-        existing_recs = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
+        existing_recs = db.query(db_model).filter(db_model.id.in_(issue_ids)).all()
         existing_rec_ids = {rec.id: rec for rec in existing_recs}
 
         for issue in issues:
             issue_id = issue["id"]
             issue_updated_at = issue["updated_at"]
             timeline_url = issue["timeline_url"]
-            create_or_update_issue(db, Issue, issue, existing_rec_ids)
 
-            events = get_timeline_events(
-                db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
-            )
-            create_or_update_events(db, events, issue_id, org, repo)
+            create_or_update_issue(db, db_model, issue, existing_rec_ids)
+
+            # TODO: adjust for prs
+            if not prs:
+                events = get_timeline_events(
+                    db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
+                )
+                create_or_update_events(db, events, issue_id, org, repo)
 
     db.close()
 
@@ -338,4 +352,6 @@ if __name__ == "__main__":
     # since_dt = today - timedelta(weeks=8)
 
     since_dt = today - timedelta(days=1)
-    update_issue_activity(db, gh, since_dt)
+
+    update_issue_activity(db, gh, Issue, since_dt, prs=False)
+    update_issue_activity(db, gh, PullRequest, since_dt, prs=True)

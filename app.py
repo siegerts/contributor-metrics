@@ -69,7 +69,8 @@ def every_30_min(event):
 def nrt_events(event):
     today = date.today()
     since_dt = today - timedelta(days=1)
-    update_issue_activity(db, nrt_gh, since_dt)
+    update_issue_activity(db, nrt_gh, Issue, since_dt, prs=False)
+    update_issue_activity(db, nrt_gh, PullRequest, since_dt, prs=True)
     reconcile_transferred_issues(db, transfers_gh)
 
 
