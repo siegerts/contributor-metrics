@@ -62,6 +62,7 @@ class TransferAPI(GitHubAPI):
         headers = {
             "Accept": "application/vnd.github.v3+json",
             "Authorization": "token " + self.token,
+            "X-GitHub-Api-Version": self.gh_api_version,
         }
 
         req = requests.get(
@@ -82,10 +83,6 @@ class TransferAPI(GitHubAPI):
             print(f"...waiting for {pause} seconds.")
             time.sleep(pause)
             print("...resuming.")
-
-
-def delete_rec():
-    pass
 
 
 def reconcile_transferred_issues(db, gh):

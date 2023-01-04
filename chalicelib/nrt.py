@@ -43,6 +43,7 @@ class TimelineAPI(GitHubAPI):
         headers = {
             "Accept": "application/vnd.github.v3+json",
             "Authorization": "token " + self.token,
+            "X-GitHub-Api-Version": self.gh_api_version,
         }
         if etag:
             headers["If-None-Match"] = etag
