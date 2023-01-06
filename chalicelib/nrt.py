@@ -4,9 +4,6 @@
 
     Near real-time GitHub issue timeline event updater.
 
-    TODO: handle issues cross-references
-    TODO: nrt for pull requests
-
 """
 
 import time
@@ -17,31 +14,25 @@ import requests  # type: ignore
 
 try:
     from chalicelib.github import (
-        REPOS,
         GitHubAPI,
         GitHubAPIException,
         create_or_update_issue,
         get_issues,
     )
-    from chalicelib.models import (
-        Event,
-        EventPoll,
-        Issue,
-        PullRequest,
-        create_db_session,
-    )
+    from chalicelib.models import Event, EventPoll
     from chalicelib.utils import send_plain_email
+    from chalicelib.constants import REPOS, TRACKED_ISSUE_EVENTS
 
 except ModuleNotFoundError:
     from github import (
-        REPOS,
         GitHubAPI,
         GitHubAPIException,
         create_or_update_issue,
         get_issues,
     )
-    from models import Event, EventPoll, Issue, PullRequest, create_db_session
+    from models import Event, EventPoll
     from utils import send_plain_email
+    from constants import REPOS, TRACKED_ISSUE_EVENTS
 
 
 class TimelineAPI(GitHubAPI):
@@ -137,8 +128,12 @@ def create_or_update_events(db, events, issue_id, org, repo):
     if not events:
         return
     else:
-        # evt ids from api
-        evt_ids = [evt["id"] for evt in events if evt["event"] != "cross-referenced"]
+        # event ids from api
+        evt_ids = [
+            evt["id"]
+            for evt in events
+            if evt.get("id", None) and evt["event"] in TRACKED_ISSUE_EVENTS
+        ]
 
         existing_issue_evts = (
             db.query(Event)
@@ -146,22 +141,31 @@ def create_or_update_events(db, events, issue_id, org, repo):
             .all()
         )
         existing_evts_recs = {rec.id: rec for rec in existing_issue_evts}
+
         evts_to_add = []
 
         for event in events:
-            # need to skip for now since no event_id
-            # TODO: figure this out, gen a unique event_id?
-            if event["event"] == "cross-referenced":
+
+            # for pr reviews -> submitted_at -> created_at
+            # for pr reviews -> state <null|string>
+            if event["event"] not in TRACKED_ISSUE_EVENTS:
                 continue
+
             event_id = event["id"]
 
-            # determine new
+            # determine new by comparing agaisnt existing
             if event_id not in existing_evts_recs.keys():
                 username = None
-                if not event.get("actor", None):
-                    username = None
+
+                # document this
+                if event["event"] == "reviewed":
+                    username = event["user"]["login"]
+                    event["actor"] = event["user"]
+                    event["created_at"] = event["submitted_at"]
+
                 else:
-                    username = event["actor"]["login"]
+                    if event.get("actor", None):
+                        username = event["actor"]["login"]
 
                 evts_to_add.append(
                     {
@@ -173,6 +177,7 @@ def create_or_update_events(db, events, issue_id, org, repo):
                         "body": event.get("body", None),
                         "label": event.get("label", None),
                         "reactions": event.get("reactions", None),
+                        "state": event.get("state", None),
                         "created_at": event["created_at"],
                         "updated_at": event.get("updated_at", None),
                         "author_association": event.get("author_association", None),
@@ -292,6 +297,7 @@ def update_issue_activity(db, gh, db_model, since_dt=None, prs=True):
         raise Exception("since_dt is required.")
 
     for repo in REPOS:
+
         q = f"repo:{org}/{repo} updated:>={since_dt}"
 
         if prs:
@@ -323,18 +329,17 @@ def update_issue_activity(db, gh, db_model, since_dt=None, prs=True):
 
             create_or_update_issue(db, db_model, issue, existing_rec_ids)
 
-            # TODO: adjust for prs
-            if not prs:
-                events = get_timeline_events(
-                    db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
-                )
-                create_or_update_events(db, events, issue_id, org, repo)
+            events = get_timeline_events(
+                db, gh, issue_id, existing_cache_ids, timeline_url, issue_updated_at
+            )
+            create_or_update_events(db, events, issue_id, org, repo)
 
     db.close()
 
 
 if __name__ == "__main__":
     import os
+    from models import Event, EventPoll, Issue, PullRequest, create_db_session
 
     from dotenv import load_dotenv  # type: ignore
 
@@ -349,9 +354,9 @@ if __name__ == "__main__":
 
     today = date.today()
     # backfill
-    # since_dt = today - timedelta(weeks=8)
+    # since_dt = today - timedelta(weeks=300)
 
     since_dt = today - timedelta(days=1)
 
-    update_issue_activity(db, gh, Issue, since_dt, prs=False)
+    # update_issue_activity(db, gh, Issue, since_dt, prs=False)
     update_issue_activity(db, gh, PullRequest, since_dt, prs=True)

@@ -126,6 +126,7 @@ class Event(Base):
     body = Column(String)
     label = Column(JSONB)
     reactions = Column(JSONB)
+    state = Column(String)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     node_id = Column(String)

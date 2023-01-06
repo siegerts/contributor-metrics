@@ -286,7 +286,7 @@ def create_or_update_issue(db, db_model, issue, existing_rec_ids):
         db (sqlalchemy DB session): sqlalchemy DB session
         db_model (sqlalchemy model): DB table model that corresponds with issue type
         issue (dict): GitHub issue
-        existing_rec_ids ([int]): List of GitHub issue ids to compare issue againts
+        existing_rec_ids ([int]): List of GitHub issue ids to compare issue against
     """
     issue_id = issue["id"]
     issue_updated_at = issue["updated_at"]
