@@ -135,3 +135,162 @@ The `policy.json` provides access from the Lambda functions to the secrets store
 ```
 
 This is added in the `config.json`.
+
+## Appendix: Database
+
+```mermaid
+classDiagram
+
+    class Member {
+        +id: Integer (PK)
+        inserted_dt: DateTime
+        inactive_dt: DateTime
+        inactive: Boolean
+        avatar_url: String
+        events_url: String
+        followers_url: String
+        following_url: String
+        gists_url: String
+        gravatar_id: String
+        html_url: String
+        login: String (Unique)
+        node_id: String
+        organizations_url: String
+        received_events_url: String
+        repos_url: String
+        site_admin: Boolean
+        starred_url: String
+        subscriptions_url: String
+        type: String
+        url: String
+    }
+
+    class Issue {
+        +id: BigInteger (PK)
+        active_lock_reason: String
+        assignee: JSONB
+        assignees: ARRAY(JSON)
+        author_association: String
+        body: String
+        closed_at: DateTime
+        comments: Integer
+        comments_url: String
+        created_at: DateTime
+        events_url: String
+        html_url: String
+        labels: ARRAY(JSON)
+        labels_url: String
+        locked: Boolean
+        milestone: JSONB
+        node_id: String
+        number: Integer
+        org: String
+        performed_via_github_app: String
+        reactions: JSONB
+        repo: String
+        repository_url: String
+        score: Float
+        state: String
+        state_reason: String
+        timeline_url: String
+        title: String
+        updated_at: DateTime
+        url: String
+        user: JSONB
+        username: String
+    }
+
+    class PullRequest {
+        +id: BigInteger (PK)
+        url: String
+        repo: String
+        org: String
+        repository_url: String
+        labels_url: String
+        comments_url: String
+        events_url: String
+        html_url: String
+        node_id: String
+        number: Integer
+        title: String
+        user: JSONB
+        username: String
+        labels: ARRAY(JSON)
+        state: String
+        state_reason: String
+        merged: Boolean
+        locked: Boolean
+        assignee: JSONB
+        assignees: ARRAY(JSON)
+        milestone: JSONB
+        comments: Integer
+        created_at: DateTime
+        updated_at: DateTime
+        closed_at: DateTime
+        author_association: String
+        active_lock_reason: String
+        draft: Boolean
+        pull_request: JSONB
+        body: String
+        reactions: JSONB
+        timeline_url: String
+        performed_via_github_app: String
+        score: Integer
+    }
+
+    class Event {
+        +id: BigInteger (PK)
+        +issue_id: BigInteger (PK)
+        org: String
+        repo: String
+        event: String
+        body: String
+        label: JSONB
+        reactions: JSONB
+        state: String
+        created_at: DateTime
+        updated_at: DateTime
+        node_id: String
+        user: JSONB
+        author_association: String
+        username: String
+    }
+
+    class EventPoll {
+        +id: BigInteger (PK)
+        +page_no: Integer (PK)
+        issue_updated_at: DateTime
+        etag: String
+    }
+
+    class Transfer {
+        +issue_id: BigInteger (PK)
+        +new_issue_id: BigInteger (PK)
+        url: String
+        number: Integer
+        repo: String
+        title: String
+        body: String
+        created_at: DateTime
+        closed_at: DateTime
+        state: String
+        org: String
+        assignee: JSONB
+        assignees: ARRAY(JSON)
+        labels: ARRAY(JSON)
+        new_repo: String
+        new_html_url: String
+        new_url: String
+        new_number: Integer
+        user: JSONB
+        username: String
+    }
+
+    Issue --|> Member: "has"
+    PullRequest --|> Member: "has"
+    Event --|> Issue: "refers to"
+    Event --|> PullRequest: "refers to"
+    Transfer --|> Issue: "refers to"
+    Transfer --|> Issue: "refers to (new)"
+
+```
