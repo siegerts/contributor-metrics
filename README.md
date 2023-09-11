@@ -292,5 +292,7 @@ classDiagram
     Event --|> PullRequest: "refers to"
     Transfer --|> Issue: "refers to"
     Transfer --|> Issue: "refers to (new)"
+    EventPoll --|> Issue: "can refer to"
+    EventPoll --|> PullRequest: "can refer to"
 
 ```
