@@ -117,7 +117,7 @@ pip install -r requirements.txt
 Activate the environment:
 
 ```
-pyenv contributor-metrics
+pyenv activate contributor-metrics
 ```
 
 ### Custom policy
