@@ -11,26 +11,27 @@ def send_plain_email(msg):
     send_to = os.getenv("SEND_TO_EMAIL")
     send_from = os.getenv("SEND_FROM_EMAIL")
 
-    response = ses_client.send_email(
-        Destination={
-            "ToAddresses": [
-                send_to,
-            ],
-        },
-        Message={
-            "Body": {
-                "Text": {
+    if send_to and send_from:
+        response = ses_client.send_email(
+            Destination={
+                "ToAddresses": [
+                    send_to,
+                ],
+            },
+            Message={
+                "Body": {
+                    "Text": {
+                        "Charset": CHARSET,
+                        "Data": f"This is an automated email. {msg}",
+                    }
+                },
+                "Subject": {
                     "Charset": CHARSET,
-                    "Data": f"This is an automated email. {msg}",
-                }
+                    "Data": "Contributor Metrics Ops Disruption",
+                },
             },
-            "Subject": {
-                "Charset": CHARSET,
-                "Data": "Contributor Metrics Ops Disruption",
-            },
-        },
-        Source=send_from,
-    )
+            Source=send_from,
+        )
 
 
 def put_parameter(parameter_name, parameter_value, parameter_type):
