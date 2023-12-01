@@ -5,8 +5,8 @@
     "dev": {
       "environment_variables": {
         "STAGE": "dev",
-        "SEND_FROM_EMAIL": "ssieger@amazon.com",
-        "SEND_TO_EMAIL": "ssieger@amazon.com"
+        "SEND_FROM_EMAIL": "",
+        "SEND_TO_EMAIL": ""
       },
       "automatic_layer": true,
       "api_gateway_stage": "api",

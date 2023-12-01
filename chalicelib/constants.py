@@ -10,6 +10,11 @@ REPOS = [
     "amplify-android",
     "amplify-category-api",
     "docs",  # added 5/2/2022
+    "discord-bot",  # added 1/6/2023
+    "learn",  # added 1/9/2023
+    "amplify-cli-export-construct",  # added 2/1/2023
+    "maplibre-gl-js-amplify",  # added 2/1/2023
+    "amplify-ios-maplibre",  # added 2/2/2023
 ]
 
 # https://docs.github.com/en/developers/webhooks-and-events/events/issue-event-types

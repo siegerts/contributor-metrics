@@ -360,7 +360,7 @@ def update_org_members_daily(db, gh):
 # run this daily
 def reconcile_unmerged_closed_prs(db, gh, since_dt=None):
     """Retrieve and update all PRs that have been `closed`
-       and **not** `merged` in the database. PRs have a `state` attrbute
+       and **not** `merged` in the database. PRs have a `state` attribute
        that only shows `open`/`closed`. For external contributors, we
        want to know if the PR was `closed` and `merged`.
 

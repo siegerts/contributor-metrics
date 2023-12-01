@@ -129,11 +129,11 @@ def create_or_update_events(db, events, issue_id, org, repo):
         return
     else:
         # event ids from api
-        evt_ids = [
-            evt["id"]
-            for evt in events
-            if evt.get("id", None) and evt["event"] in TRACKED_ISSUE_EVENTS
-        ]
+        evt_ids = []
+        for evt in events:
+            if evt:
+                if evt.get("id", None) and evt["event"] in TRACKED_ISSUE_EVENTS:
+                    evt_ids.append(evt["id"])
 
         existing_issue_evts = (
             db.query(Event)
@@ -148,7 +148,9 @@ def create_or_update_events(db, events, issue_id, org, repo):
 
             # for pr reviews -> submitted_at -> created_at
             # for pr reviews -> state <null|string>
-            if event["event"] not in TRACKED_ISSUE_EVENTS:
+            if not event:
+                continue
+            if event.get("event", None) not in TRACKED_ISSUE_EVENTS:
                 continue
 
             event_id = event["id"]
@@ -356,7 +358,7 @@ if __name__ == "__main__":
     # backfill
     # since_dt = today - timedelta(weeks=300)
 
-    since_dt = today - timedelta(days=1)
+    since_dt = today - timedelta(days=4)
 
-    # update_issue_activity(db, gh, Issue, since_dt, prs=False)
-    update_issue_activity(db, gh, PullRequest, since_dt, prs=True)
+    update_issue_activity(db, gh, Issue, since_dt, prs=False)
+    # update_issue_activity(db, gh, PullRequest, since_dt, prs=True)
